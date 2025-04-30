@@ -95,18 +95,16 @@
   
   .image-viewer-panel {
     flex: 1 1 60%; /* Flexible width, takes most space */
-    min-width: 0;
     border: 1px solid #ddd;
     padding: 10px;
     height: 100%;
     overflow: hidden; /* Let inner container handle scroll */
     display: flex; /* Use flexbox for alignment */
     flex-direction: column; /* Stack title and image container */
-    /*background-color: #f0f0f0;*/ 
   }
   .image-viewer-panel h4 {
       margin-top: 0;
-      margin-bottom: 5px;
+      margin-bottom: 10px;
       flex-shrink: 0; /* Prevent title from shrinking */
   }
   .image-viewer-panel.placeholder {
@@ -131,7 +129,6 @@
   
   .results-panel {
     flex: 1 1 35%; /* Flexible width */
-    min-width: 0;
     border: 1px solid #ddd;
     padding: 15px;
     height: 100%;
@@ -210,37 +207,25 @@
 }
 
 .image-crop-container {
-    flex-grow: 1; /* Take remaining vertical space in the panel */
-    position: relative; /* Keep for ReactCrop */
-    width: 100%; /* Fill the panel width */
-    height: 100%; /* Fill the panel height */
-    overflow-y: auto; /* Allow vertical scroll ONLY */
-    overflow-x: hidden; /* Prevent horizontal scroll */
-    padding: 0; /* No padding */
-    margin: 0; /* No margin */
-    /* border: 1px dashed blue; /* Temporary border for debugging */
-    /* REMOVE flex centering properties */
-    /* display: flex; */
-    /* justify-content: center; */
-    /* align-items: center; */
-  }
+  flex-grow: 1; /* Allow container to fill available space */
+  position: relative; /* Needed for ReactCrop positioning */
+  overflow: auto; /* Add scrollbars if the image/crop area is large */
+  width: 100%;
+  height: 100%; /* Make it fill the available vertical space */
+  display: flex; /* Center the image within the container if needed */
+  justify-content: center;
+  align-items: center;
+}
 
-  .image-crop-container .ReactCrop {
-    /* Ensure ReactCrop itself doesn't cause overflow */
-    max-width: 100%;
-    display: inline-block; /* Change from flex to inline-block */
-    vertical-align: middle; /* Helps alignment sometimes */
-    /* Let the image inside dictate size via max-width/height */
-    border: 1px solid #eee; /* Optional: Add border for visibility */
-  }
+/* Ensure ReactCrop elements behave correctly */
+.image-crop-container .ReactCrop {
+  max-width: 100%;
+  max-height: 100%;
+}
 
-  .image-crop-container img {
-    display: block; /* Needed for margin: auto to work */
-    object-fit: contain; /* Keep this */
-    max-width: 100%; /* Limit width to container */
-    max-height: 100%; /* Limit height to container */
-    margin: auto; /* Auto margins horizontally AND vertically center the block element */
-    padding: 0;
-    /* Ensure no explicit width/height override */
-    border: 1px solid #ccc; /* Optional: Add border for visibility */
-  }
+.image-crop-container img {
+  display: block;
+  /* maxHeight/maxWidth set inline for object-fit */
+  /* You might need to adjust depending on exact layout needs */
+  object-fit: contain; /* Scale image down to fit container while maintaining aspect ratio */
+}

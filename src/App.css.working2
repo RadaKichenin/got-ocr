@@ -102,7 +102,7 @@
     overflow: hidden; /* Let inner container handle scroll */
     display: flex; /* Use flexbox for alignment */
     flex-direction: column; /* Stack title and image container */
-    /*background-color: #f0f0f0;*/ 
+    background-color: #f0f0f0; 
   }
   .image-viewer-panel h4 {
       margin-top: 0;
@@ -218,7 +218,7 @@
     overflow-x: hidden; /* Prevent horizontal scroll */
     padding: 0; /* No padding */
     margin: 0; /* No margin */
-    /* border: 1px dashed blue; /* Temporary border for debugging */
+    border: 1px dashed blue; /* Temporary border for debugging */
     /* REMOVE flex centering properties */
     /* display: flex; */
     /* justify-content: center; */
@@ -231,7 +231,6 @@
     display: inline-block; /* Change from flex to inline-block */
     vertical-align: middle; /* Helps alignment sometimes */
     /* Let the image inside dictate size via max-width/height */
-    border: 1px solid #eee; /* Optional: Add border for visibility */
   }
 
   .image-crop-container img {
@@ -242,5 +241,4 @@
     margin: auto; /* Auto margins horizontally AND vertically center the block element */
     padding: 0;
     /* Ensure no explicit width/height override */
-    border: 1px solid #ccc; /* Optional: Add border for visibility */
   }

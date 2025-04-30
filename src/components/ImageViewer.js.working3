@@ -1,0 +1,188 @@
+import React, { useState, useRef, useEffect } from 'react';
+import ReactCrop from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
+const ImageViewer = ({ imageUrl, onAreaSelect }) => {
+    const [crop, setCrop] = useState();
+    const [completedPixelCrop, setCompletedPixelCrop] = useState(null);
+    const imgRef = useRef(null); // Ref to <img>
+    const containerRef = useRef(null); // Ref to scrollable container div
+
+    // Effect 1: Reset state when image changes
+    useEffect(() => {
+        console.log("ImageViewer: Image URL change/mount. Resetting crop.");
+        setCrop(undefined);
+        setCompletedPixelCrop(null);
+        if (onAreaSelect) onAreaSelect(null);
+    }, [imageUrl]); // Keep dependencies required by lint
+
+    // --- Effect 2: Calculate Coordinates (Revised for Scroll + Object-Fit) ---
+    useEffect(() => {
+        console.log("ImageViewer: Coord calc effect triggered. Crop:", completedPixelCrop);
+
+        if (!completedPixelCrop?.width || !completedPixelCrop?.height || !imgRef.current || !containerRef.current) {
+            console.log("ImageViewer: Skipping coord calc - invalid crop/refs.");
+            if (completedPixelCrop === null && onAreaSelect) onAreaSelect(null);
+            return;
+        }
+
+        const imageElement = imgRef.current;
+        const containerElement = containerRef.current;
+        const { naturalWidth, naturalHeight } = imageElement;
+
+        // Get current rendered dimensions and position relative to viewport
+        const imageRect = imageElement.getBoundingClientRect();
+        // Get container position relative to viewport and its scroll offsets
+        const containerRect = containerElement.getBoundingClientRect();
+        const scrollTop = containerElement.scrollTop;
+        const scrollLeft = containerElement.scrollLeft;
+
+        // Displayed dimensions from getBoundingClientRect are often more reliable
+        const displayWidth = imageRect.width;
+        const displayHeight = imageRect.height;
+
+        console.log(`ImageViewer: -- Dimensions/Positions --
+            Natural W/H: ${naturalWidth} / ${naturalHeight}
+            Displayed W/H (imgRect): ${displayWidth.toFixed(2)} / ${displayHeight.toFixed(2)}
+            Image Rect: T=${imageRect.top.toFixed(2)}, L=${imageRect.left.toFixed(2)}
+            Container Rect: T=${containerRect.top.toFixed(2)}, L=${containerRect.left.toFixed(2)}
+            Container Scroll: T=${scrollTop}, L=${scrollLeft}
+            Input Pixel Crop: x=${completedPixelCrop.x?.toFixed(0)}, y=${completedPixelCrop.y?.toFixed(0)}, w=${completedPixelCrop.width?.toFixed(0)}, h=${completedPixelCrop.height?.toFixed(0)}`);
+
+
+        if (!naturalWidth || !naturalHeight || displayWidth <= 0 || displayHeight <= 0) {
+            console.error("ImageViewer: Invalid natural or display dimensions.");
+            if (onAreaSelect) onAreaSelect(null);
+            return;
+        }
+
+        // --- Calculate Visual Dimensions & Offsets (object-fit: contain) ---
+        // This part calculates letterboxing *within* the imageRect bounds
+        const naturalAspect = naturalWidth / naturalHeight;
+        const displayAspect = displayWidth / displayHeight;
+        let visualWidth = displayWidth;
+        let visualHeight = displayHeight;
+        let objectFitOffsetX = 0; // Offset caused by object-fit INSIDE the image box
+        let objectFitOffsetY = 0;
+
+        if (naturalAspect > displayAspect) { // Image wider than display box
+            visualHeight = displayWidth / naturalAspect;
+            objectFitOffsetY = (displayHeight - visualHeight) / 2;
+        } else if (naturalAspect < displayAspect) { // Image taller than display box
+            visualWidth = displayHeight * naturalAspect;
+            objectFitOffsetX = (displayWidth - visualWidth) / 2;
+        }
+        console.log(`ImageViewer: Object-Fit Visual/Offset: visualW=${visualWidth.toFixed(2)}, visualH=${visualHeight.toFixed(2)}, objFitOffsetX=${objectFitOffsetX.toFixed(2)}, objFitOffsetY=${objectFitOffsetY.toFixed(2)}`);
+
+        // --- Adjust PixelCrop based on actual position and object-fit ---
+        // The crop x/y from react-image-crop are relative to the top-left of the img element's box (imageRect)
+        // We need coordinates relative to the VISUAL content's top-left corner.
+        const cropX_relativeToVisual = completedPixelCrop.x - objectFitOffsetX;
+        const cropY_relativeToVisual = completedPixelCrop.y - objectFitOffsetY;
+
+        // We also need to clamp the crop dimensions to the visual area,
+        // starting from the adjusted position.
+        const clampedCropW = Math.min(completedPixelCrop.width, Math.max(0, visualWidth - cropX_relativeToVisual));
+        const clampedCropH = Math.min(completedPixelCrop.height, Math.max(0, visualHeight - cropY_relativeToVisual));
+
+        // Ensure the adjusted starting point is within the visual bounds too
+        const finalCropX_relativeToVisual = Math.max(0, cropX_relativeToVisual);
+        const finalCropY_relativeToVisual = Math.max(0, cropY_relativeToVisual);
+
+        console.log(`ImageViewer: Final Adjusted Crop (relative to visual content): x=${finalCropX_relativeToVisual.toFixed(0)}, y=${finalCropY_relativeToVisual.toFixed(0)}, w=${clampedCropW.toFixed(0)}, h=${clampedCropH.toFixed(0)}`);
+
+        // --- Calculate Scaling based on VISUAL dimensions ---
+        if (visualWidth <= 0 || visualHeight <= 0) {
+            console.error("ImageViewer: Zero visual dimensions after object-fit calc.");
+            if (onAreaSelect) onAreaSelect(null);
+            return;
+        }
+        const scaleX = naturalWidth / visualWidth;
+        const scaleY = naturalHeight / visualHeight;
+        console.log(`ImageViewer: Final Scaling Factors: scaleX=${scaleX.toFixed(4)}, scaleY=${scaleY.toFixed(4)}`);
+
+        // --- Scale the ADJUSTED & CLAMPED crop coordinates ---
+        const originalX1 = finalCropX_relativeToVisual * scaleX;
+        const originalY1 = finalCropY_relativeToVisual * scaleY;
+        const originalX2 = (finalCropX_relativeToVisual + clampedCropW) * scaleX;
+        const originalY2 = (finalCropY_relativeToVisual + clampedCropH) * scaleY;
+
+        // --- Round and Clamp final coordinates to natural image bounds ---
+        const finalX1 = Math.round(originalX1);
+        const finalY1 = Math.round(originalY1);
+        const finalX2 = Math.round(originalX2);
+        const finalY2 = Math.round(originalY2);
+        const clampedX1 = Math.max(0, Math.min(finalX1, naturalWidth));
+        const clampedY1 = Math.max(0, Math.min(finalY1, naturalHeight));
+        const clampedX2 = Math.max(0, Math.min(finalX2, naturalWidth));
+        const clampedY2 = Math.max(0, Math.min(finalY2, naturalHeight));
+        console.log(`ImageViewer: Final Coords (Rounded & Clamped to Natural): x1=${clampedX1}, y1=${clampedY1}, x2=${clampedX2}, y2=${clampedY2}`);
+
+        // --- Propagate results ---
+        if (clampedX2 > clampedX1 && clampedY2 > clampedY1) {
+            const boxString = `[${clampedX1},${clampedY1},${clampedX2},${clampedY2}]`;
+            console.log("***** ImageViewer: Calculated Original Coords Box:", boxString, "*****");
+            if (onAreaSelect) onAreaSelect(boxString);
+        } else {
+            console.warn("ImageViewer: Calculated zero-area crop. Reporting null.");
+            if (onAreaSelect) onAreaSelect(null);
+        }
+    }, [completedPixelCrop, onAreaSelect]); // Dependencies
+
+
+    // --- Event Handlers ---
+    function onImageLoad(e) {
+        console.log("ImageViewer: Image loaded. Natural W/H:", e.currentTarget.naturalWidth, e.currentTarget.naturalHeight);
+        // Could potentially trigger a calculation here if needed, but usually rely on onComplete
+    }
+    const handleCropChange = (pixelCrop, percentCrop) => {
+        setCrop(percentCrop);
+    };
+    const handleCropComplete = (pixelCrop) => {
+        console.log("ImageViewer: handleCropComplete fired! Pixel Crop:", pixelCrop);
+        // Store completed crop if valid
+        if (pixelCrop?.width > 0 && pixelCrop?.height > 0) {
+            setCompletedPixelCrop(pixelCrop);
+        } else {
+            setCompletedPixelCrop(null);
+        }
+    };
+
+
+    // --- Render Logic ---
+    if (!imageUrl) {
+        return <div className="image-viewer-panel placeholder">Select a page to view.</div>;
+    }
+    return (
+        <div className="image-viewer-panel">
+            <h4>Page Viewer</h4>
+            <p style={{ fontSize: '0.9em', color: '#555' }}>
+                Drag on the image to select an area for OCR.
+            </p>
+            {/* Attach ref to the scrollable container */}
+            <div ref={containerRef} className="image-crop-container">
+                {imageUrl ? (
+                    <ReactCrop
+                        crop={crop}
+                        onChange={handleCropChange}
+                        onComplete={handleCropComplete}
+                        minWidth={10}
+                        minHeight={10}
+                    >
+                        <img
+                            ref={imgRef} // Ref to the image itself
+                            src={imageUrl}
+                            alt="Document page for cropping"
+                            style={{ display: 'block', maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                            onLoad={onImageLoad}
+                        />
+                    </ReactCrop>
+                ) : (
+                    <p>Loading image...</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default ImageViewer;
