@@ -52,6 +52,56 @@ export const getImageUrl = (imagePath) => {
     return `${API_BASE_URL}${imagePath}`;
 };
 
+// --- NEW API FUNCTION ---
+export const analyzePage = async (docId, pageNum) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analyze_page`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+        page_num: pageNum,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    // Expecting { formatted_text: "..." }
+    return await response.json();
+  } catch (error) {
+    console.error("Error calling analyze page:", error);
+    throw error;
+  }
+};
+// --- END NEW API FUNCTION ---
+// --- NEW API FUNCTION for Document Analysis ---
+export const analyzeDocument = async (docId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analyze_document`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    // Expecting { page_results: {"0": "text", ...}, errors: {"2":"msg",...} }
+    return await response.json();
+  } catch (error) {
+    console.error("Error calling analyze document:", error);
+    throw error;
+  }
+};
+// --- END Document Analysis API FUNCTION ---
+
 
 export const exportText = async (textContent, filename = 'extracted_text.txt') => {
     try {

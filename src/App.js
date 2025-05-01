@@ -1,104 +1,127 @@
+// src/App.js
 import React, { useState, useCallback } from 'react';
 import PageThumbnails from './components/PageThumbnails';
 import ImageViewer from './components/ImageViewer';
 import ResultsPanel from './components/ResultsPanel';
-import LoadingSpinner from './components/LoadingSpinner'; // Keep for global loading state
-import { getImageUrl } from './services/api';
+import LoadingSpinner from './components/LoadingSpinner';
+import { getImageUrl, analyzeDocument } from './services/api'; // Import analyzeDocument
 import './App.css';
 
 function App() {
-  const [docInfo, setDocInfo] = useState(null); // Stores { doc_id, page_count, page_image_urls }
-  const [currentPage, setCurrentPage] = useState(0); // Index of the currently viewed page
-  const [selectedCoords, setSelectedCoords] = useState(null); // Holds "[x1,y1,x2,y2]" string or null
-  const [errorMessage, setErrorMessage] = useState(''); // Stores error messages for display
-  const [isUploading, setIsUploading] = useState(false); // Global loading state during upload/processing
+  const [docInfo, setDocInfo] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [selectedCoords, setSelectedCoords] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Generic loading state
+  const [documentAnalysisResults, setDocumentAnalysisResults] = useState(null); // State for full doc results
 
-  // --- Callbacks wrapped in useCallback for performance ---
-
-  // Called by FileUploadArea (inside PageThumbnails) on successful processing
+  // --- Callbacks ---
   const handleUploadSuccess = useCallback((data) => {
     console.log("App: Upload successful:", data);
-    setDocInfo(data); // Update document info (triggers re-render)
-    setCurrentPage(0); // Reset view to the first page
-    setSelectedCoords(null); // Clear any previous selection coordinates
-    setErrorMessage(''); // Clear any previous errors
-    // isUploading state is managed within FileUploadArea before this callback
-  }, []); // Empty dependency array: this function reference is stable
+    setDocInfo(data);
+    setCurrentPage(0);
+    setSelectedCoords(null);
+    setErrorMessage('');
+    setDocumentAnalysisResults(null); // Clear previous doc analysis on new upload
+    setIsLoading(false); // Ensure loading stops
+  }, []);
 
-  // Called by FileUploadArea (inside PageThumbnails) or other components on error
   const handleError = useCallback((message) => {
     console.error("App: Error received:", message);
-    setErrorMessage(message); // Display the error message
-    // isUploading state is managed within FileUploadArea before this callback
+    setErrorMessage(message);
+    setIsLoading(false); // Ensure loading stops on error too
   }, []);
 
-  // Called by PageThumbnails when a thumbnail is clicked
   const handlePageSelect = useCallback((pageIndex) => {
     console.log("App: Page selected:", pageIndex);
-    setCurrentPage(pageIndex); // Update the current page index
-    setSelectedCoords(null); // Clear selection when changing page
-    // Optionally clear results in ResultsPanel here if needed
+    setCurrentPage(pageIndex);
+    setSelectedCoords(null);
   }, []);
 
-  // Called by ImageViewer when a crop selection is completed or cleared
   const handleAreaSelect = useCallback((coordsString) => {
-    console.log("App: Area selected:", coordsString);
-    setSelectedCoords(coordsString); // Update the selected coordinates state
+    setSelectedCoords(coordsString);
   }, []);
 
-  // --- Derived State ---
-  // Safely get the URL for the current page image
+  // --- NEW: Handler for Analyze Document Button ---
+  const handleAnalyzeDocumentClick = useCallback(async () => {
+    if (!docInfo?.doc_id) {
+      setErrorMessage("Please upload a document first.");
+      return;
+    }
+    setErrorMessage('');
+    setIsLoading(true); // Use global loading state
+    setDocumentAnalysisResults(null); // Clear previous results
+    console.log(`App: Analyzing entire document: ${docInfo.doc_id}`);
+
+    try {
+      const result = await analyzeDocument(docInfo.doc_id);
+      console.log("App: Document analysis result:", result);
+      setDocumentAnalysisResults(result); // Store { page_results: {...}, errors: {...} }
+      // Maybe show a success message or specific errors?
+      if (result.errors && Object.keys(result.errors).length > 0) {
+           setErrorMessage(`Document analysis complete with errors on pages: ${Object.keys(result.errors).join(', ')}`);
+      } else {
+           // Optional: Brief success notification
+           // setErrorMessage("Document analysis complete.");
+           // setTimeout(()=> setErrorMessage(''), 3000); // Clear after 3s
+      }
+    } catch (error) {
+      handleError(error.message || "Failed to analyze document."); // Use central error handler
+      setDocumentAnalysisResults(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [docInfo, handleError]); // Dependencies
+
+
   const currentImageUrl = docInfo?.page_image_urls?.[currentPage]
     ? getImageUrl(docInfo.page_image_urls[currentPage])
     : null;
 
-  // --- Render ---
   return (
     <div className="App">
-      {/* Global Loading Spinner: Shows only when isUploading is true */}
-      {isUploading && <LoadingSpinner message="Processing Document..." />}
+      {/* Update loading message based on state */}
+      {isLoading && <LoadingSpinner message="Processing..." />}
 
       <header className="App-header">
         <h1>Document OCR & Extraction Tool</h1>
+        {/* Add Analyze Document Button */}
+        {docInfo && (
+            <button
+                onClick={handleAnalyzeDocumentClick}
+                disabled={isLoading}
+                className="analyze-doc-button" // Add class for styling
+            >
+                Analyze Entire Document
+            </button>
+        )}
       </header>
 
       <main className="main-content">
-        {/* Display Error Banner if there's an error message */}
         {errorMessage && <p className="error-banner">Error: {errorMessage}</p>}
-
-        {/* Main Three-Panel Layout */}
         <div className="app-layout">
-          {/* Left Panel: Thumbnails + Upload Area */}
           <PageThumbnails
-            // Pass necessary state and callbacks down
             docId={docInfo?.doc_id}
-            pageImageUrls={docInfo?.page_image_urls} // Pass safely, defaults to [] in child
+            pageImageUrls={docInfo?.page_image_urls || []}
             currentPage={currentPage}
             onPageSelect={handlePageSelect}
             onUploadSuccess={handleUploadSuccess}
             onError={handleError}
-            setIsLoading={setIsUploading} // Allows FileUploadArea to control global spinner
+            setIsLoading={setIsLoading}
           />
-
-          {/* Center Panel: Image Viewer & Cropping */}
           <ImageViewer
-            imageUrl={currentImageUrl} // Pass the calculated URL
-            onAreaSelect={handleAreaSelect} // Callback for when area selection changes
+            imageUrl={currentImageUrl}
+            onAreaSelect={handleAreaSelect}
           />
-
-          {/* Right Panel: Results & Actions */}
           <ResultsPanel
-            docId={docInfo?.doc_id} // Pass docId safely
-            currentPageNum={currentPage} // Pass current page number
-            selectedAreaCoords={selectedCoords} // Pass the selected coordinates string
-            // Pass onError here too if ResultsPanel actions can cause errors
-            // onError={handleError}
+            docId={docInfo?.doc_id}
+            currentPageNum={currentPage}
+            selectedAreaCoords={selectedCoords}
+            // Pass full document analysis results down if needed by ResultsPanel
+             fullDocumentResults={documentAnalysisResults}
           />
         </div>
       </main>
-
-      {/* Optional Footer */}
-      {/* <footer className="App-footer">Footer Content</footer> */}
     </div>
   );
 }

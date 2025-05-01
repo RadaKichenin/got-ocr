@@ -244,3 +244,35 @@
     /* Ensure no explicit width/height override */
     border: 1px solid #ccc; /* Optional: Add border for visibility */
   }
+
+  .App-header {
+    background-color: #282c34;
+    padding: 15px 20px; /* Adjust padding */
+    color: white;
+    margin-bottom: 20px;
+    display: flex; /* Use flexbox for header layout */
+    justify-content: space-between; /* Space title and button */
+    align-items: center;
+  }
+  
+  .App-header h1 {
+      margin: 0; /* Remove default margin */
+  }
+  
+  .analyze-doc-button {
+      padding: 8px 15px;
+      font-size: 0.9em;
+      background-color: #17a2b8; /* Teal color */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+  }
+  .analyze-doc-button:hover {
+      background-color: #138496;
+  }
+  .analyze-doc-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+  }
