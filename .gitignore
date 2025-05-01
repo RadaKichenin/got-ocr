@@ -19,6 +19,7 @@ Thumbs.db
 # Uploaded and Processed files
 uploads/
 processed/
+debug_images/
 
 # IDE specific
 .vscode/

@@ -1,0 +1,202 @@
+import fitz  # PyMuPDF
+from PIL import Image
+import os
+import cv2 # OpenCV for image processing
+import numpy as np # For numerical operations (used with OpenCV)
+from werkzeug.utils import secure_filename
+
+# --- Configuration ---
+PROCESSED_DIR = "processed"
+PDF_DPI = 300
+
+# --- Helper Functions ---
+
+def ensure_dir(directory):
+    """Creates a directory if it doesn't exist."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+def get_skew_angle(gray_image: np.ndarray) -> float:
+    """
+    Calculates the skew angle of the text in a grayscale image.
+    Uses the minAreaRect method on the coordinates of non-black pixels.
+    Returns the angle in degrees needed to correct the skew (counter-clockwise).
+    Returns 0.0 if angle cannot be determined reliably.
+    """
+    # Threshold the image to get binary image (text is white, background black)
+    # Otsu's thresholding automatically finds a good threshold value.
+    _, thresh = cv2.threshold(gray_image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    # Find coordinates of all non-black pixels (potential text)
+    coords = np.column_stack(np.where(thresh > 0))
+
+    if coords.shape[0] < 50: # Need sufficient points for a reliable rectangle
+         print("Warning: Not enough points found for reliable skew detection.")
+         return 0.0
+
+    # Find the minimum area rectangle that bounds the text points
+    # rect = ((center_x, center_y), (width, height), angle)
+    rect = cv2.minAreaRect(coords)
+    angle = rect[-1] # Angle is the last element
+
+    # Adjust angle interpretation:
+    # cv2.minAreaRect returns angles in [-90, 0).
+    # A horizontal rectangle has angle -90. We want angle relative to horizontal.
+    if angle < -45:
+        angle = -(90 + angle) # Adjust for vertical rectangles
+    else:
+        angle = -angle # Negate for counter-clockwise rotation needed
+
+    # Limit angle to avoid excessive rotation for noise
+    if abs(angle) > 45: # If angle is too large, likely an error or vertical text
+        print(f"Warning: Detected skew angle ({angle:.2f}) too large, assuming 0.")
+        return 0.0
+
+    print(f"Detected skew angle: {angle:.2f} degrees")
+    return angle
+
+def rotate_image(image: np.ndarray, angle: float, background_color=(255, 255, 255)) -> np.ndarray:
+    """Rotates an image by the given angle (degrees)."""
+    if abs(angle) < 0.1: # Don't rotate for very small angles
+        return image
+
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+
+    # Get rotation matrix
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    # Perform the rotation
+    # cv2.BORDER_CONSTANT with white background is usually best for OCR documents
+    rotated = cv2.warpAffine(image, M, (w, h),
+                             flags=cv2.INTER_CUBIC, # Better interpolation
+                             borderMode=cv2.BORDER_CONSTANT,
+                             borderValue=background_color)
+    return rotated
+
+def enhance_image(image_path):
+    """
+    Applies enhancement steps: Grayscaling, Skew Correction, CLAHE Contrast, Denoising.
+    Overwrites the original image file with the enhanced version.
+    Returns True on success, False on failure.
+    """
+    try:
+        # 1. Read Image using OpenCV
+        img = cv2.imread(image_path)
+        if img is None:
+            print(f"Error: Could not read image for enhancement: {image_path}")
+            return False
+        print(f"Enhancing image: {image_path}")
+
+        # 2. Grayscaling
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        print("  - Converted to grayscale")
+
+        # 3. Skew Correction
+        try:
+            skew_angle = get_skew_angle(gray)
+            if abs(skew_angle) > 0.1: # Only rotate if significant skew detected
+                # Rotate the grayscale image
+                gray = rotate_image(gray, skew_angle, background_color=(255,)) # Grayscale background is 255
+                print(f"  - Corrected skew by {skew_angle:.2f} degrees")
+            else:
+                print("  - Skew angle negligible, skipping rotation.")
+        except Exception as e_skew:
+            print(f"  - Warning: Skew correction failed: {e_skew}. Proceeding without it.")
+            # Continue with the original grayscale image
+
+        # Keep a reference to the potentially deskewed grayscale image
+        processed_gray = gray
+
+        # 4. Contrast Adjustment (CLAHE)
+        # Apply CLAHE to the (potentially deskewed) grayscale image
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        contrast_img = clahe.apply(processed_gray)
+        print("  - Applied CLAHE contrast enhancement")
+
+        # 5. Noise Reduction (Optional but often helpful)
+        # Apply denoising to the contrast-enhanced grayscale image
+        # Parameters (h, templateWindowSize, searchWindowSize) might need tuning.
+        # h=10 is a common starting point. Higher values reduce more noise but can blur.
+        final_img = cv2.fastNlMeansDenoising(contrast_img, None, h=10, templateWindowSize=7, searchWindowSize=21)
+        print("  - Applied denoising")
+
+        # 6. Save Enhanced Image (Overwrite original processed file)
+        # Save the final processed grayscale image
+        success = cv2.imwrite(image_path, final_img)
+        if not success:
+             print(f"Error: Failed to write enhanced image back to {image_path}")
+             return False
+
+        print(f"Successfully enhanced and saved {image_path}")
+        return True
+
+    except Exception as e:
+        print(f"Error during image enhancement pipeline for {image_path}: {e}")
+        return False
+
+def process_document(file_path, doc_id):
+    """
+    Converts PDF pages to images or processes single images.
+    Applies image enhancement pipeline.
+    Saves processed images to processed/<doc_id>/page_<n>.png
+    Returns list of relative processed image filenames, or None on failure.
+    """
+    filename = secure_filename(os.path.basename(file_path))
+    doc_processed_dir = os.path.join(PROCESSED_DIR, doc_id)
+    ensure_dir(doc_processed_dir)
+    processed_files = []
+    file_ext = os.path.splitext(filename)[1].lower()
+
+    if file_ext == ".pdf":
+        try:
+            doc = fitz.open(file_path)
+            print(f"Processing PDF {filename}, {len(doc)} pages...")
+            for i, page in enumerate(doc):
+                page_num = i # 0-based index
+                print(f"  - Processing page {page_num + 1}/{len(doc)}")
+                pix = page.get_pixmap(dpi=PDF_DPI)
+                output_filename = f"page_{page_num}.png"
+                output_path = os.path.join(doc_processed_dir, output_filename)
+                pix.save(output_path)
+
+                # Apply enhancement pipeline
+                if not enhance_image(output_path):
+                    print(f"    - Warning: Enhancement failed for page {page_num + 1}")
+                    # Decide if failure is critical - here we continue but log warning
+
+                processed_files.append(output_filename)
+            doc.close()
+            print(f"Finished processing PDF {filename}.")
+        except Exception as e:
+            print(f"Error processing PDF {filename}: {e}")
+            return None # Indicate failure
+    elif file_ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]:
+        try:
+            print(f"Processing image {filename}...")
+            output_filename = f"page_0.png" # Treat as page 0
+            output_path = os.path.join(doc_processed_dir, output_filename)
+
+            # Use OpenCV to read and then save as PNG to standardize before enhancement
+            img_temp = cv2.imread(file_path)
+            if img_temp is None:
+                 print(f"Error: Failed to read input image {filename} with OpenCV.")
+                 return None
+            cv2.imwrite(output_path, img_temp)
+            del img_temp # Release memory
+
+            # Apply enhancement pipeline
+            if not enhance_image(output_path):
+                 print(f"    - Warning: Enhancement failed for image {filename}")
+                 # Decide if failure is critical
+
+            processed_files.append(output_filename)
+            print(f"Finished processing image {filename}.")
+        except Exception as e:
+            print(f"Error processing image {filename}: {e}")
+            return None # Indicate failure
+    else:
+        print(f"Unsupported file type: {filename}")
+        return None # Indicate failure
+
+    return processed_files

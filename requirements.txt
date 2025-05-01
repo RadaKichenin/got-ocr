@@ -6,3 +6,4 @@ opencv-python-headless # For potential future enhancements, lightweight version
 requests
 python-dotenv # Optional, for managing .env file
 Werkzeug      # Usually installed with Flask, but good to list
+numpy         # For image processing
