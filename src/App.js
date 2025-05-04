@@ -1,19 +1,20 @@
-// src/App.js
 import React, { useState, useCallback } from 'react';
 import PageThumbnails from './components/PageThumbnails';
 import ImageViewer from './components/ImageViewer';
 import ResultsPanel from './components/ResultsPanel';
 import LoadingSpinner from './components/LoadingSpinner';
-import { getImageUrl, analyzeDocument } from './services/api'; // Import analyzeDocument
+// Import analyzeDocument and getImageUrl
+import { getImageUrl, analyzeDocument } from './services/api'; // Removed unused uploadFile import here
 import './App.css';
 
 function App() {
-  const [docInfo, setDocInfo] = useState(null);
+  const [docInfo, setDocInfo] = useState(null); // Stores { doc_id, page_count }
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCoords, setSelectedCoords] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Generic loading state
-  const [documentAnalysisResults, setDocumentAnalysisResults] = useState(null); // State for full doc results
+  const [isLoading, setIsLoading] = useState(false); // Global loading state
+  // State to store results from full document analysis (GOT-OCR layout attempt)
+  const [documentAnalysisResults, setDocumentAnalysisResults] = useState(null);
 
   // --- Callbacks ---
   const handleUploadSuccess = useCallback((data) => {
@@ -22,14 +23,14 @@ function App() {
     setCurrentPage(0);
     setSelectedCoords(null);
     setErrorMessage('');
-    setDocumentAnalysisResults(null); // Clear previous doc analysis on new upload
-    setIsLoading(false); // Ensure loading stops
-  }, []);
+    setDocumentAnalysisResults(null);
+    setIsLoading(false); // Ensure loading stops (triggered via setIsLoading prop)
+  }, []); // Empty dependency array: this function reference is stable
 
   const handleError = useCallback((message) => {
     console.error("App: Error received:", message);
-    setErrorMessage(message);
-    setIsLoading(false); // Ensure loading stops on error too
+    setErrorMessage(`Operation failed: ${message}`);
+    setIsLoading(false);
   }, []);
 
   const handlePageSelect = useCallback((pageIndex) => {
@@ -39,72 +40,71 @@ function App() {
   }, []);
 
   const handleAreaSelect = useCallback((coordsString) => {
+    console.log("App: Area selected:", coordsString);
     setSelectedCoords(coordsString);
   }, []);
 
-  // --- NEW: Handler for Analyze Document Button ---
+  // Handler for Analyze Entire Document Button
   const handleAnalyzeDocumentClick = useCallback(async () => {
     if (!docInfo?.doc_id) {
       setErrorMessage("Please upload a document first.");
       return;
     }
     setErrorMessage('');
-    setIsLoading(true); // Use global loading state
-    setDocumentAnalysisResults(null); // Clear previous results
-    console.log(`App: Analyzing entire document: ${docInfo.doc_id}`);
+    setIsLoading(true);
+    setDocumentAnalysisResults(null);
+    console.log(`App: Analyzing entire document layout: ${docInfo.doc_id}`);
 
     try {
       const result = await analyzeDocument(docInfo.doc_id);
       console.log("App: Document analysis result:", result);
-      setDocumentAnalysisResults(result); // Store { page_results: {...}, errors: {...} }
-      // Maybe show a success message or specific errors?
+      setDocumentAnalysisResults(result);
       if (result.errors && Object.keys(result.errors).length > 0) {
-           setErrorMessage(`Document analysis complete with errors on pages: ${Object.keys(result.errors).join(', ')}`);
+           const errorPages = Object.keys(result.errors).map(p => parseInt(p)+1).join(', ');
+           setErrorMessage(`Document layout analysis complete with errors on pages: ${errorPages}.`);
       } else {
-           // Optional: Brief success notification
-           // setErrorMessage("Document analysis complete.");
-           // setTimeout(()=> setErrorMessage(''), 3000); // Clear after 3s
+           setErrorMessage("Document layout analysis complete.");
+           setTimeout(()=> setErrorMessage(''), 4000);
       }
     } catch (error) {
-      handleError(error.message || "Failed to analyze document."); // Use central error handler
+      handleError(error.message || "Failed to analyze document layout.");
       setDocumentAnalysisResults(null);
     } finally {
       setIsLoading(false);
     }
-  }, [docInfo, handleError]); // Dependencies
+  }, [docInfo, handleError]);
 
 
-  const currentImageUrl = docInfo?.page_image_urls?.[currentPage]
-    ? getImageUrl(docInfo.page_image_urls[currentPage])
-    : null;
+  // Construct image URL for the current page
+  const currentImageUrl = getImageUrl(docInfo?.doc_id, currentPage);
 
   return (
     <div className="App">
-      {/* Update loading message based on state */}
       {isLoading && <LoadingSpinner message="Processing..." />}
 
       <header className="App-header">
         <h1>Document OCR & Extraction Tool</h1>
-        {/* Add Analyze Document Button */}
-        {docInfo && (
+        {docInfo && docInfo.page_count > 0 && (
             <button
                 onClick={handleAnalyzeDocumentClick}
                 disabled={isLoading}
-                className="analyze-doc-button" // Add class for styling
+                className="analyze-doc-button"
             >
-                Analyze Entire Document
+                Analyze Entire Document Layout (GOT-OCR)
             </button>
         )}
       </header>
 
       <main className="main-content">
-        {errorMessage && <p className="error-banner">Error: {errorMessage}</p>}
+        {errorMessage && <p className="error-banner">{errorMessage}</p>}
         <div className="app-layout">
           <PageThumbnails
             docId={docInfo?.doc_id}
-            pageImageUrls={docInfo?.page_image_urls || []}
+            // Pass page count correctly
+            pageCount={docInfo?.page_count || 0}
             currentPage={currentPage}
             onPageSelect={handlePageSelect}
+            // Pass callbacks needed by FileUploadArea
             onUploadSuccess={handleUploadSuccess}
             onError={handleError}
             setIsLoading={setIsLoading}
@@ -117,8 +117,8 @@ function App() {
             docId={docInfo?.doc_id}
             currentPageNum={currentPage}
             selectedAreaCoords={selectedCoords}
-            // Pass full document analysis results down if needed by ResultsPanel
-             fullDocumentResults={documentAnalysisResults}
+            // Pass the full document analysis results down
+            fullDocumentResults={documentAnalysisResults}
           />
         </div>
       </main>

@@ -1,19 +1,11 @@
 import React from 'react';
-import { getImageUrl } from '../services/api';
-import FileUploadArea from './FileUploadArea'; // Import the new component
-import './PageThumbnails.css'; // Assuming you might want specific styles
+import { getImageUrl } from '../services/api'; // getImageUrl now needs docId, pageNum
+import FileUploadArea from './FileUploadArea';
+import './PageThumbnails.css'; // Make sure this file exists or remove import
 
-// Props expected:
-// - docId: String | null
-// - pageImageUrls: Array<string>
-// - currentPage: number
-// - onPageSelect: Function(index)
-// - onUploadSuccess: Function(resultData) -> Called by FileUploadArea
-// - onError: Function(errorMessage) -> Called by FileUploadArea
-// - setIsLoading: Function(boolean) -> Called by FileUploadArea to control global spinner
 const PageThumbnails = ({
   docId,
-  pageImageUrls = [], // Default to empty array
+  pageCount = 0, // Use pageCount instead of pageImageUrls
   currentPage,
   onPageSelect,
   onUploadSuccess,
@@ -23,31 +15,30 @@ const PageThumbnails = ({
 
   return (
     <div className="thumbnails-panel">
-      {/* --- File Upload Area --- */}
       <FileUploadArea
         onUploadSuccess={onUploadSuccess}
         onError={onError}
         setIsLoading={setIsLoading}
       />
-      {/* --- End File Upload Area --- */}
 
-      {/* --- Thumbnails Section --- */}
-      {pageImageUrls && pageImageUrls.length > 0 ? (
+      {pageCount > 0 ? (
         <>
-          <h4 className="thumbnails-header">Pages ({pageImageUrls.length})</h4>
+          <h4 className="thumbnails-header">Pages ({pageCount})</h4>
           <ul className="thumbnails-list">
-            {pageImageUrls.map((urlPath, index) => (
+            {/* Generate list based on pageCount */}
+            {Array.from({ length: pageCount }, (_, index) => (
               <li
-                key={`${docId || 'doc'}-${index}`} // Add prefix if docId exists
+                key={`${docId || 'doc'}-${index}`}
                 className={`thumbnail-item ${index === currentPage ? 'active' : ''}`}
                 onClick={() => onPageSelect(index)}
-                title={`View Page ${index + 1}`} // Tooltip for accessibility
+                title={`View Page ${index + 1}`}
               >
                 <img
                   className="thumbnail-image"
-                  src={getImageUrl(urlPath)} // Use helper for full URL
+                   // Call getImageUrl with docId and page index
+                  src={getImageUrl(docId, index)}
                   alt={`Thumbnail of Page ${index + 1}`}
-                  loading="lazy" // Improve performance for many pages
+                  loading="lazy"
                 />
                 <span className="thumbnail-label">Page {index + 1}</span>
               </li>
@@ -55,7 +46,6 @@ const PageThumbnails = ({
           </ul>
         </>
       ) : (
-          // Message shown when no document is loaded yet
           <p className="no-document-message">
               Upload a document to see pages.
           </p>
