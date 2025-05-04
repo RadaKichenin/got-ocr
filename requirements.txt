@@ -1,9 +1,14 @@
 Flask
 Flask-Cors
 PyMuPDF
+ocrmypdf
+img2pdf
 Pillow
 opencv-python-headless # For potential future enhancements, lightweight version
 requests
 python-dotenv # Optional, for managing .env file
 Werkzeug      # Usually installed with Flask, but good to list
 numpy         # For image processing
+#brew install unpaper
+#brew install ghostscript
+#brew install tesseract
