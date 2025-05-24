@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend-service # Path to your Flask backend Dockerfile context
+    container_name: doc-ocr-backend
+    ports:
+      - "5001:5001" # Expose Flask app port
+    volumes:
+      - ./backend-service/uploads:/app/uploads # Persistent storage for temp uploads
+      - ./backend-service/processed_pdfs:/app/processed_pdfs # Persistent storage for OCR'd PDFs
+      - ./backend-service/temp_images:/app/temp_images # Persistent storage for temp images for GOT-OCR
+      - ./backend-service/debug_images:/app/debug_images # For debug images from processing.py
+    env_file:
+      - ./backend-service/.env # Load environment variables for backend
+    # For GPU access for ocrmypdf (if Tesseract uses it) or a local VLM later:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - ocrnet
+
+  frontend:
+    build: ./frontend-app # Path to your React frontend Dockerfile context
+    container_name: doc-ocr-frontend
+    ports:
+      - "3000:80" # Serve React build from Nginx on port 80 inside container, expose 3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - ocrnet
+
+  # Optional: GOT-OCR Microservice (if you also want to dockerize it)
+  # got-ocr-service:
+  #   build: ./FastAPI-GOT-OCR-2-Transformers # Path to its Dockerfile context
+  #   container_name: got-ocr-service
+  #   ports:
+  #     - "3001:3000" # Expose its internal port 3000 as 3001 externally, for example
+  #   env_file:
+  #     - ./FastAPI-GOT-OCR-2-Transformers/.env # If it uses an .env file
+  #   # For GPU access for the GOT-OCR model:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   restart: unless-stopped
+  #   networks:
+  #     - ocrnet
+
+networks:
+  ocrnet:
+    driver: bridge
