@@ -1,0 +1,64 @@
+/* src/components/PageThumbnails.css (Optional Example) */
+.thumbnails-panel {
+    /* Base styles already in App.css */
+    display: flex;
+    flex-direction: column; /* Stack upload area and list */
+  }
+  
+  .thumbnails-header {
+    margin-top: 15px; /* Space above header if thumbnails are present */
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.95em;
+    color: #333;
+    text-align: center;
+  }
+  
+  .thumbnails-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; /* Allow list to take remaining space */
+    overflow-y: auto; /* Add scroll only to the list if needed */
+  }
+  
+  .thumbnail-item {
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    text-align: center;
+    border-radius: 4px;
+  }
+  .thumbnail-item:hover {
+    background-color: #f0f0f0;
+    border-color: #ccc;
+  }
+  .thumbnail-item.active {
+    border-color: #007bff;
+    background-color: #e7f3ff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+  }
+  
+  .thumbnail-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 5px;
+    background-color: #fff; /* Background while loading lazy */
+  }
+  
+  .thumbnail-label {
+      font-size: 0.8em;
+      color: #555;
+  }
+  
+  .no-document-message {
+      text-align: center;
+      color: #888;
+      font-size: 0.9em;
+      margin-top: 20px;
+      padding: 10px;
+  }

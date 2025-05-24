@@ -1,0 +1,114 @@
+/* src/components/ResultsPanel.css */
+.results-panel {
+    /* Base styles already in App.css */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .results-panel h4, .results-panel h5, .results-panel h6 {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+  .results-panel h6 {
+      font-size: 0.9em;
+      color: #444;
+  }
+  
+  .action-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+  }
+  .action-section:last-child {
+    border-bottom: none;
+  }
+  
+  .action-section p {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  .action-section code {
+      font-size: 0.9em;
+      word-break: break-all;
+      background-color: #f0f0f0;
+      padding: 2px 4px;
+      border-radius: 3px;
+  }
+  
+  .results-panel button {
+    padding: 8px 15px;
+    margin-right: 10px;
+    margin-bottom: 5px; /* Add margin below buttons */
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    font-size: 0.9em;
+  }
+  .results-panel button:hover {
+    background-color: #0056b3;
+  }
+  .results-panel button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .ocr-results textarea, .raw-analysis-output textarea {
+    width: 95%;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    font-family: monospace;
+    font-size: 0.85em;
+    border: 1px solid #ccc;
+    padding: 5px;
+    background-color: #fdfdfd;
+  }
+  
+  .error-message {
+    color: #dc3545;
+    font-weight: bold;
+    margin-top: 10px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  
+  .detected-tables {
+      margin-top: 15px;
+  }
+  
+  .table-container {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      background-color: #fff;
+  }
+  
+  .table-preview {
+      max-height: 300px; /* Limit height of table previews */
+      overflow: auto; /* Add scrollbars to tall/wide tables */
+      margin-bottom: 10px;
+  }
+  
+  /* Basic styling for parsed tables */
+  .table-preview table {
+      border: 1px solid #ccc !important; /* Override inline */
+      border-collapse: collapse !important;
+      width: 100% !important;
+      font-size: 0.85em;
+  }
+  .table-preview th, .table-preview td {
+      border: 1px solid #ddd !important;
+      padding: 4px 6px !important;
+      text-align: left !important;
+      vertical-align: top;
+  }
+  .table-preview th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+  }

@@ -1,0 +1,231 @@
+/* Basic App Layout */
+.App {
+    text-align: center;
+  }
+  
+  .App-header {
+    background-color: #282c34;
+    padding: 15px;
+    color: white;
+    margin-bottom: 20px;
+  }
+  
+  .main-content {
+    padding: 0 20px;
+  }
+  
+  .error-banner {
+      background-color: #ffdddd;
+      border: 1px solid #f44336;
+      color: #f44336;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+  }
+  
+  .upload-form {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    display: inline-block; /* Center the form */
+  }
+  .upload-form h3 {
+      margin-top: 0;
+  }
+  .upload-form input[type="file"] {
+    margin-right: 10px;
+  }
+  
+  /* Three-panel layout */
+  .app-layout {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start; /* Align items top */
+    gap: 15px; /* Space between panels */
+    height: calc(100vh - 150px); /* Adjust height as needed */
+  }
+  
+  .thumbnails-panel {
+    flex: 0 0 180px; /* Fixed width for thumbnails */
+    border: 1px solid #ddd;
+    padding: 10px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: #f8f8f8;
+  }
+  .thumbnails-panel h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      text-align: left;
+  }
+  
+  .thumbnails-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .thumbnails-panel li {
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    text-align: center;
+  }
+  .thumbnails-panel li:hover {
+    background-color: #e9e9e9;
+  }
+  .thumbnails-panel li.active {
+    border-color: #007bff;
+    background-color: #e7f3ff;
+  }
+  .thumbnails-panel img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 5px;
+  }
+  .thumbnails-panel span {
+      font-size: 0.8em;
+  }
+  
+  .image-viewer-panel {
+    flex: 1 1 60%; /* Flexible width, takes most space */
+    border: 1px solid #ddd;
+    padding: 10px;
+    height: 100%;
+    overflow: hidden; /* Let inner container handle scroll */
+    display: flex; /* Use flexbox for alignment */
+    flex-direction: column; /* Stack title and image container */
+  }
+  .image-viewer-panel h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      flex-shrink: 0; /* Prevent title from shrinking */
+  }
+  .image-viewer-panel.placeholder {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #888;
+      font-style: italic;
+  }
+  .image-container {
+      flex-grow: 1; /* Allow container to fill space */
+      overflow: auto; /* Add scrollbars if image is large */
+      position: relative; /* Needed for absolute positioning of selection */
+  }
+  .image-container img {
+      display: block;
+      max-width: 100%;
+      height: auto; /* Maintain aspect ratio */
+      cursor: crosshair;
+  }
+  
+  
+  .results-panel {
+    flex: 1 1 35%; /* Flexible width */
+    border: 1px solid #ddd;
+    padding: 15px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: #fdfdfd;
+  }
+  .results-panel h4, .results-panel h5 {
+      margin-top: 0;
+      margin-bottom: 10px;
+  }
+  .results-panel .action-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+  }
+  .results-panel .action-section:last-child {
+      border-bottom: none;
+  }
+  .results-panel .action-section p {
+      font-size: 0.9em;
+      color: #555;
+      margin-bottom: 10px;
+  }
+  .results-panel button {
+      padding: 8px 15px;
+      margin-right: 10px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+  }
+  .results-panel button:hover {
+      background-color: #0056b3;
+  }
+  .results-panel button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+  }
+  .results-panel .ocr-results textarea {
+    width: 95%; /* Adjust width as needed */
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-family: monospace;
+    border: 1px solid #ccc;
+    padding: 5px;
+  }
+  .results-panel .error-message {
+      color: #dc3545;
+      font-weight: bold;
+      margin-top: 10px;
+  }
+
+/* ... (keep existing styles) ... */
+
+/* Styles for ImageViewer with react-image-crop */
+.image-viewer-panel {
+  flex: 1 1 60%;
+  border: 1px solid #ddd;
+  padding: 10px;
+  height: 100%;
+  overflow: hidden; /* Prevent panel scroll, let inner container scroll */
+  display: flex;
+  flex-direction: column;
+}
+.image-viewer-panel h4 {
+    margin-top: 0;
+    margin-bottom: 5px; /* Reduce margin */
+    flex-shrink: 0;
+}
+.image-viewer-panel p { /* Style the instruction text */
+    margin-top: 0;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.image-crop-container {
+  flex-grow: 1; /* Allow container to fill available space */
+  position: relative; /* Needed for ReactCrop positioning */
+  overflow: auto; /* Add scrollbars if the image/crop area is large */
+  width: 100%;
+  height: 100%; /* Make it fill the available vertical space */
+  display: flex; /* Center the image within the container if needed */
+  justify-content: center;
+  align-items: center;
+}
+
+/* Ensure ReactCrop elements behave correctly */
+.image-crop-container .ReactCrop {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.image-crop-container img {
+  display: block;
+  /* maxHeight/maxWidth set inline for object-fit */
+  /* You might need to adjust depending on exact layout needs */
+  object-fit: contain; /* Scale image down to fit container while maintaining aspect ratio */
+}
